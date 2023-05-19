@@ -1,0 +1,92 @@
+pragma solidity ^0.8.0;
+
+interface IERC20 {
+    function transfer(address recipient, uint256 amount) external returns (bool);
+}
+
+contract AutomatedBookBuilder {
+    struct Bid {
+        address bidder;
+        uint256 amount;
+        string url;
+        bool accepted;
+    }
+
+    Bid[] public bids;
+    mapping(address => bool) public bidOriginators;
+    mapping(string => address) public urlToBidder;
+
+    address public tokenContract;
+    uint256 public biddingEndTime;
+    uint256 public minimumMilestone;
+    uint256 public raiseAmount;
+    uint256 public milestoneStartTime;
+    bool public offeringNullified;
+
+    constructor(address _tokenContract, uint256 _biddingDuration, uint256 _minimumMilestone, uint256 _raiseAmount) {
+        tokenContract = _tokenContract;
+        biddingEndTime = block.timestamp + _biddingDuration;
+        minimumMilestone = _minimumMilestone;
+        raiseAmount = _raiseAmount;
+        milestoneStartTime = block.timestamp;
+        offeringNullified = false;
+    }
+
+    function placeBid(uint256 _amount, string memory _url) external {
+        require(!offeringNullified, "Offering has been nullified");
+        require(block.timestamp <= biddingEndTime, "Bidding period has ended");
+        require(urlToBidder[_url] == address(0), "URL already used for bidding");
+
+        bids.push(Bid(msg.sender, _amount, _url, false));
+        urlToBidder[_url] = msg.sender;
+    }
+
+    function distributeTokens() external {
+        require(block.timestamp > biddingEndTime, "Bidding period has not ended");
+
+        uint256 totalRaised = 0;
+        for (uint256 i = 0; i < bids.length; i++) {
+            Bid storage bid = bids[i];
+            totalRaised += bid.amount;
+        }
+
+        if (totalRaised < (raiseAmount * minimumMilestone) / 100) {
+            // Minimum milestone not met, nullify the offering
+            for (uint256 i = 0; i < bids.length; i++) {
+                Bid storage bid = bids[i];
+                address bidder = bid.bidder;
+                uint256 amount = bid.amount;
+
+                // Return bid amount to the original bidder wallet
+                require(IERC20(tokenContract).transfer(bidder, amount), "Token transfer failed");
+            }
+
+            offeringNullified = true;
+        } else {
+            // Minimum milestone met, distribute tokens to accepted bids
+            for (uint256 i = 0; i < bids.length; i++) {
+                Bid storage bid = bids[i];
+                address bidder = bid.bidder;
+                uint256 amount = bid.amount;
+
+                if (bid.accepted) {
+                    // Transfer tokens to the winning bidder
+                    require(IERC20(tokenContract).transfer(bidder, amount), "Token transfer failed");
+                }
+            }
+        }
+    }
+
+    function acceptBid(string memory _url) external {
+        require(!offeringNullified, "Offering has been nullified");
+        require(block.timestamp <= biddingEndTime, "Bidding period has ended");
+        require(urlToBidder[_url] != address(0), "Invalid URL");
+        require(!bidOriginators[msg.sender], "Bid originator cannot accept a bid");
+        require(!bidsAccepted[_url], "Bid already accepted for this URL");
+
+        Bid storage bid = bids[urlToBidder[_url]];
+        bid.accepted = true;
+        bidOriginators[bid.bidder] = true;
+        bidsAccepted[_url] = true;
+    }
+}
