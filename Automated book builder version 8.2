@@ -1,0 +1,65 @@
+pragma solidity ^0.8.2;
+
+// Import the necessary libraries for zk-SNARKs
+import "./Verifier.sol";
+import "./VerifierInterface.sol";
+
+contract FinancialDataVerifier {
+    VerifierInterface private verifier;
+
+    struct FinancialData {
+        string cid; // IPFS CID representing the financial data
+        uint256 lastUpdated; // Timestamp of the last update
+    }
+
+    FinancialData public financialData;
+
+    // Event triggered when zk proof is verified
+    event ProofVerified(address indexed sender);
+
+    constructor(address _verifierAddress) {
+        verifier = VerifierInterface(_verifierAddress);
+    }
+
+    // Function to submit financial data CID and generate zk proof
+    function submitFinancialData(string memory _cid) external {
+        // Store the financial data CID
+        financialData.cid = _cid;
+        financialData.lastUpdated = block.timestamp; // Update the lastUpdated timestamp
+
+        // Generate the zk proof using the financial data CID
+        Proof memory proof = generateProof(_cid);
+
+        // Verify the proof
+        require(verifyProof(proof), "Invalid proof");
+
+        // Emit an event indicating successful proof verification
+        emit ProofVerified(msg.sender);
+    }
+
+    // Function to generate zk proof using the financial data CID
+    function generateProof(string memory _cid) private view returns (Proof memory) {
+        // Create an instance of the Verifier contract
+        Verifier snarkVerifier = Verifier(address(verifier));
+
+        // Call the function in the Verifier contract to generate the proof
+        return snarkVerifier.generateProof(_cid);
+    }
+
+    // Function to verify zk proof
+    function verifyProof(Proof memory _proof) private view returns (bool) {
+        // Create an instance of the Verifier contract
+        Verifier snarkVerifier = Verifier(address(verifier));
+
+        // Call the function in the Verifier contract to verify the proof
+        return snarkVerifier.verifyProof(_proof);
+    }
+
+    // Function to update financial data from the accounting system API
+    function updateFinancialDataFromAPI(string memory _cid) external {
+        // TODO: Implement code to pull data from accounting system API and update the CID
+
+        financialData.cid = _cid;
+        financialData.lastUpdated = block.timestamp; // Update the lastUpdated timestamp
+    }
+}
