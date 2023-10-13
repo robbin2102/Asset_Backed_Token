@@ -10,3 +10,6 @@ Had there been a way to attribute $1 of fiat dollars underlying USDT on-chain, n
 ### Solution
 
 Asset backed token protocol as an infrastructure layer between blockchains & dapps that can attribute real world assets to their on-chain tokens & contracts. The ABT protocol consists of an asset validation layer that can uniquely attribute a real world asset on-chain using zero-knowledge proofs along with a decentralised banking layer that can attribute fiat money to on-chain tokens with a deed bank contract integrated to traditional banking rails. The banking layer works like an on-chain bank account carrying all utilities of a fiat like dollar attribute to decentralised currencies & this layer has potential use case for every dapp existing now or that will exist in future.
+
+
+##Contracts
